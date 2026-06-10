@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MilPayRuck</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <!-- Brand / Product Header -->
+  <header class="brandHeader">
+    <div class="brandInner">
+      <div class="brandLeft">
+        <div class="brandName">MilPayRuck by RuckOn</div>
+        <div class="brandTagline">Personalized tools that simplify complex systems.</div>
+      </div>
+
+      <div class="brandRight">
+        <div class="productKicker">Product</div>
+        <div class="productName">MilPayRuck</div>
+        <div class="productTagline">Personalized military pay &amp; entitlements — explained.</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="topBar">
+      <div class="topBarLeft">
+        <h1 class="pageTitle">Pay Calculator (Frontend Prototype)</h1>
+        <p class="pageSub">
+          Demo automation includes ZIP→State lookup, progressive federal tax, BAH type selection (BAH vs Partial BAH),
+          special pay presets, and profile saving in your browser.
+        </p>
+      </div>
+
+      <div class="topBarActions">
+        <button id="btnSaveProfile" class="btn primary" type="button">Save / Update Profile</button>
+        <button id="btnResetAll" class="btn danger" type="button">Reset All</button>
+      </div>
+    </div>
+
+    <section class="grid">
+      <!-- PROFILE -->
+      <div class="card">
+        <div class="cardHead">
+          <h2>Profile</h2>
+          <span class="badge" id="profileStatus">Not saved</span>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Branch</label>
+            <select id="branch">
+              <option value="">— Select —</option>
+              <option>Army</option>
+              <option>AirForce</option>
+              <option>Navy</option>
+              <option>Marine</option>
+              <option>Coast Guard</option>
+              <option>Space Force</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Duty Status</label>
+            <select id="status">
+              <option value="">— Select —</option>
+              <option>Active</option>
+              <option>Guard</option>
+              <option>Reserve</option>
+            </select>
+            <div class="hint">Note: Some entitlements differ by order length and component (handled later).</div>
+          </div>
+        </div>
+
+        <div class="row mt10">
+          <div>
+            <label>Rank</label>
+            <select id="rank"></select>
+          </div>
+
+          <div>
+            <label>Filing Status (tax)</label>
+            <select id="filingStatus">
+              <option value="single">Single</option>
+              <option value="married_joint">Married Filing Jointly</option>
+              <option value="head_household">Head of Household</option>
+            </select>
+            <div class="hint">Used for progressive federal tax estimate.</div>
+          </div>
+        </div>
+
+        <div class="row mt10">
+          <div>
+            <label>PEBD (Pay Entry Base Date)</label>
+            <input id="pebd" type="date" />
+            <div class="errorText" id="pebdError" aria-live="polite"></div>
+            <div class="hint">Time in service (TIS) auto-calculates from PEBD.</div>
+          </div>
+
+          <div>
+            <label>As-of Date</label>
+            <input id="asOfDate" type="date" />
+            <div class="hint">Defaults to today. Tax and TIS use this date.</div>
+          </div>
+        </div>
+
+        <div class="row mt10">
+          <div>
+            <label>Time in Service (auto)</label>
+            <input id="tisDisplay" disabled />
+          </div>
+
+          <div>
+            <label>Dependents?</label>
+            <div class="radioRow">
+              <label><input type="radio" name="dependents" value="Yes" /> Yes</label>
+              <label><input type="radio" name="dependents" value="No" /> No</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row mt10">
+          <div>
+            <label>Living on government quarters?</label>
+            <div class="radioRow">
+              <label><input type="radio" name="onQuarters" value="Yes" /> Yes</label>
+              <label><input type="radio" name="onQuarters" value="No" /> No</label>
+            </div>
+            <div class="hint">If Yes, the app uses Partial BAH (demo).</div>
+          </div>
+
+          <div>
+            <label>Duty Location ZIP</label>
+            <input id="dutyZip" inputmode="numeric" placeholder="e.g., 11357" />
+            <div class="errorText" id="dutyZipError" aria-live="polite"></div>
+            <div class="hint" id="dutyZipHint">Auto-detects state/city (demo ZIP dataset).</div>
+          </div>
+        </div>
+
+        <div class="row mt10">
+          <div>
+            <label>Home of Record ZIP</label>
+            <input id="horZip" inputmode="numeric" placeholder="e.g., 10001" />
+            <div class="errorText" id="horZipError" aria-live="polite"></div>
+            <div class="hint" id="horZipHint">Used later for residency rules (demo for now).</div>
+          </div>
+
+          <div>
+            <label>Tax Year</label>
+            <select id="taxYear">
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+            </select>
+            <div class="hint">Demo tables. Replace with official yearly datasets later.</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <div>
+            <label>Base Pay (monthly)</label>
+            <input id="basePay" type="number" min="0" step="0.01" placeholder="Auto from demo table (or override)" />
+            <div class="hint">Auto-filled from rank + TIS if available.</div>
+          </div>
+          <div>
+            <label>Housing Allowance (auto)</label>
+            <input id="bah" type="number" min="0" step="0.01" placeholder="Auto BAH/Partial BAH (demo)" />
+            <div class="hint" id="bahHint">BAH depends on ZIP + rank + dependents + quarters.</div>
+          </div>
+        </div>
+
+        <div class="row mt10">
+          <div>
+            <label>Subsistence Allowance BAS (monthly)</label>
+            <input id="bas" type="number" min="0" step="0.01" placeholder="Auto (demo) or override" />
+          </div>
+          <div>
+            <label>Per Diem (monthly total)</label>
+            <input id="perDiem" type="number" min="0" step="0.01" placeholder="Auto later (demo optional)" />
+          </div>
+        </div>
+
+        <div class="row mt10">
+          <div>
+            <label>COLA (monthly)</label>
+            <input id="cola" type="number" min="0" step="0.01" placeholder="Auto later (demo optional)" />
+          </div>
+          <div>
+            <label>Auto-fill all (demo)</label>
+            <button id="btnAutoFill" class="btn" type="button">Auto-fill Demo Rates</button>
+            <div class="hint">Fills base/BAH/BAS/COLA/per diem using placeholder tables.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EVENTS / DEDUCTIONS -->
+      <div class="card">
+        <div class="cardHead">
+          <h2>Events, Deductions &amp; Taxes</h2>
+          <span class="badge" id="taxBadge">Progressive tax</span>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Deployed / away from dependents?</label>
+            <div class="radioRow">
+              <label><input type="radio" name="deployed" value="Yes" /> Yes</label>
+              <label><input type="radio" name="deployed" value="No" /> No</label>
+            </div>
+            <div class="hint">Demo: if Yes + dependents Yes + 31+ days, FSA auto-applies ($250).</div>
+          </div>
+
+          <div>
+            <label>Deployment Start Date</label>
+            <input id="depStart" type="date" />
+            <div class="hint">Used for FSA eligibility demo.</div>
+          </div>
+        </div>
+
+        <div class="row mt10">
+          <div>
+            <label>Deployment End Date (optional)</label>
+            <input id="depEnd" type="date" />
+          </div>
+          <div>
+            <label>Family Separation Allowance (FSA)</label>
+            <input id="fsa" type="number" min="0" step="0.01" placeholder="Auto (demo) or override" />
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="cardInset">
+          <h3>Deductions (optional)</h3>
+
+          <div class="row mt10">
+            <div>
+              <label>TSP Traditional (%)</label>
+              <input id="tspTradPct" type="number" min="0" step="0.1" placeholder="e.g., 5" />
+            </div>
+            <div>
+              <label>Roth TSP (%)</label>
+              <input id="tspRothPct" type="number" min="0" step="0.1" placeholder="e.g., 5" />
+            </div>
+          </div>
+
+          <div class="row mt10">
+            <div>
+              <label>Child Support ($/month)</label>
+              <input id="childSupport" type="number" min="0" step="0.01" placeholder="e.g., 600" />
+            </div>
+            <div>
+              <label>Insurance ($/month)</label>
+              <input id="insurance" type="number" min="0" step="0.01" placeholder="e.g., 180" />
+            </div>
+          </div>
+
+          <div class="row mt10">
+            <div>
+              <label>Other Deductions ($/month)</label>
+              <input id="dedOther" type="number" min="0" step="0.01" placeholder="e.g., 250" />
+            </div>
+            <div>
+              <label>Notes</label>
+              <input id="notes" placeholder="Saved with profile (local only)" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPECIAL PAY -->
+      <div class="card full">
+        <div class="cardHead">
+          <h2>Special Pay (smart presets + gating)</h2>
+          <span class="badge">Multi-add</span>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Special Pay Type</label>
+            <select id="spType">
+              <option value="">— Select —</option>
+              <option value="Critical Skills Incentive Pay">Critical Skills Incentive Pay</option>
+              <option value="Aviation Career Incentive Pay">Aviation Career Incentive Pay</option>
+              <option value="Air Force Aviation Incentive Pay">Air Force Aviation Incentive Pay</option>
+              <option value="Demolition Pay">Demolition Pay</option>
+              <option value="Extended Duty Special Pay">Extended Duty Special Pay</option>
+              <option value="Flight Deck Duty Pay">Flight Deck Duty Pay</option>
+              <option value="Foreign Language Pay">Foreign Language Pay</option>
+              <option value="HALO Pay">HALO Pay</option>
+              <option value="Hardship Duty Pay">Hardship Duty Pay</option>
+              <option value="Hazard Pay (Crewmember)">Hazard Pay (Crewmember)</option>
+              <option value="Hazard Pay (Non-Crewmember)">Hazard Pay (Non-Crewmember)</option>
+              <option value="Hazardous Duty Pay (Crewmember AWACS)">Hazardous Duty Pay (Crewmember AWACS)</option>
+              <option value="Jump Pay">Jump Pay</option>
+              <option value="Navy Career Enlisted Flyers">Navy Career Enlisted Flyers</option>
+              <option value="Sea Pay">Sea Pay</option>
+              <option value="Special Mission">Special Mission</option>
+              <option value="Submarine Incentive Pay">Submarine Incentive Pay</option>
+              <option value="Additional Bonuses">Additional Bonuses</option>
+              <option value="Additional Special Pay">Additional Special Pay</option>
+            </select>
+            <div class="hint" id="spGateHint"></div>
+          </div>
+
+          <div>
+            <label>Frequency</label>
+            <select id="spFreq">
+              <option value="monthly">Monthly</option>
+              <option value="daily">Daily</option>
+              <option value="oneTime">One-time</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row mt10">
+          <div>
+            <label>Amount</label>
+            <input id="spAmount" type="number" min="0" step="0.01" placeholder="Auto from demo table (or override)" />
+            <div class="radioRow">
+              <label><input type="checkbox" id="spOverride" /> Override auto amount</label>
+            </div>
+            <div class="hint" id="spAmountHint">Amount auto-fills from demo rate tables.</div>
+          </div>
+
+          <div>
+            <label>Taxability (per item)</label>
+            <select id="spTaxability">
+              <option value="taxable">Taxable</option>
+              <option value="nontaxable">Non-taxable</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="spPresets" class="mt10"></div>
+        <div id="spDynamic" class="mt10"></div>
+
+        <div class="actions mt10">
+          <button type="button" class="btn primary" id="addSpBtn">Add Special Pay</button>
+          <button type="button" class="btn" id="clearSpBtn">Clear Special Pays</button>
+        </div>
+
+        <div id="spList" class="mt8"></div>
+      </div>
+
+      <!-- RESULTS -->
+      <div class="card full">
+        <div class="cardHead">
+          <h2>Results</h2>
+          <span class="badge" id="calcBadge">Ready</span>
+        </div>
+
+        <div class="actions">
+          <button id="btnCalculate" class="btn primary" type="button">Calculate</button>
+          <button id="btnLoadSaved" class="btn" type="button">Load Saved Profile</button>
+        </div>
+
+        <div class="summary mt10">
+          <div class="cardInset">
+            <h3>Entered Data (only what you provided)</h3>
+            <table class="table" id="enteredTable">
+              <thead><tr><th>Field</th><th>Value</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="cardInset">
+            <h3>Key Numbers</h3>
+            <div class="kpi">
+              <div class="kpiBox">
+                <div class="kpiT">Monthly Gross</div>
+                <div class="kpiV" id="kpiGross">$0.00</div>
+              </div>
+              <div class="kpiBox">
+                <div class="kpiT">Monthly Net</div>
+                <div class="kpiV good" id="kpiNet">$0.00</div>
+              </div>
+              <div class="kpiBox">
+                <div class="kpiT">Taxable (monthly)</div>
+                <div class="kpiV" id="kpiTaxable">$0.00</div>
+              </div>
+              <div class="kpiBox">
+                <div class="kpiT">Non-taxable (monthly)</div>
+                <div class="kpiV" id="kpiNonTaxable">$0.00</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <table class="table" id="calcTable">
+              <thead><tr><th>Item</th><th>Monthly</th></tr></thead>
+              <tbody></tbody>
+            </table>
+
+            <div class="divider"></div>
+
+            <table class="table">
+              <thead><tr><th>Paycheck</th><th>Net Amount</th></tr></thead>
+              <tbody>
+                <tr><td>Mid-month (estimated)</td><td id="midPay">$0.00</td></tr>
+                <tr><td>End-month (estimated)</td><td id="endPay">$0.00</td></tr>
+              </tbody>
+            </table>
+
+            <div class="divider"></div>
+
+            <table class="table">
+              <thead><tr><th>Annual</th><th>Amount</th></tr></thead>
+              <tbody>
+                <tr><td>Annual Gross</td><td id="annualGross">$0.00</td></tr>
+                <tr><td>Annual Net</td><td id="annualNet">$0.00</td></tr>
+                <tr><td>Estimated Annual Federal Tax</td><td id="annualFedTax">$0.00</td></tr>
+                <tr><td>Estimated Annual State Tax</td><td id="annualStateTax">$0.00</td></tr>
+                <tr><td>Estimated Annual Local Tax</td><td id="annualLocalTax">$0.00</td></tr>
+              </tbody>
+            </table>
+
+            <p class="footnote" id="explainBox"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="appFooter">
+    <div class="footerInner">
+      <div class="footerText">
+        <p>
+          MilPayRuck provides estimated military pay and entitlement calculations for planning and educational purposes only.
+          This application is not affiliated with the Department of Defense (DoD), DFAS, or any U.S. government agency.
+          Actual pay, allowances, and taxes may vary based on official orders, entitlements, and individual circumstances.
+          Always verify your pay using your official LES and DFAS resources.
+        </p>
+        <p class="footerBrand">
+          MilPayRuck is a One2One product — personalized tools that simplify complex systems.
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
